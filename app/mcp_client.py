@@ -85,13 +85,25 @@ class McpToolClient:
     def call(self, server: str, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         """Call one MCP tool and return its structured JSON result."""
 
-        return anyio.run(
-            self._call_async,
-            server,
-            self._settings.url_for(server),
-            tool_name,
-            arguments,
-        )
+        url = self._settings.url_for(server)
+        last_error: RuntimeError | None = None
+        for attempt in range(2):
+            try:
+                return anyio.run(self._call_async, server, url, tool_name, arguments)
+            except RuntimeError as exc:
+                last_error = exc
+                if attempt == 0 and ("503" in str(exc) or "service unavailable" in str(exc).lower()):
+                    logger.info(
+                        "retrying tool call  server=%s  tool=%s  attempt=%d",
+                        server,
+                        tool_name,
+                        attempt + 2,
+                    )
+                    continue
+                raise
+        if last_error:
+            raise last_error
+        raise RuntimeError(f"MCP tool {tool_name} failed after retries")
 
     async def _call_async(
         self,
