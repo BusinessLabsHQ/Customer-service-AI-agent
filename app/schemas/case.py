@@ -202,6 +202,8 @@ class AgentRunOutput(BaseModel):
     """Public runtime output returned by the API and eval runner."""
 
     case_id: str
+    customer_id: str | None = None
+    order_id: str | None = None
     intent: Intent
     confidence: float = Field(ge=0, le=1)
     slots: dict[str, str] = Field(default_factory=dict)

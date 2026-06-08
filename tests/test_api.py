@@ -22,6 +22,10 @@ def test_run_case_endpoint_with_fixture(tmp_path) -> None:
     assert payload["final_action"] == FinalAction.PROCESS_REFUND
     assert payload["escalate"] is False
     assert "process_refund" in payload["tool_calls"]
+    assert payload["customer_id"] == "cus_123"
+    assert payload["order_id"] == "ord_123"
+    assert isinstance(payload["policy_refs"], list)
+    assert payload.get("policy_explanation") is not None
 
     stored = client.get(f"/cases/{payload['case_id']}")
 

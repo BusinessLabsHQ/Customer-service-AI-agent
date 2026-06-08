@@ -388,6 +388,8 @@ class SupportCoordinator:
         )["explanation"]
         output = AgentRunOutput(
             case_id=case_id,
+            customer_id=slots.get("customer_id"),
+            order_id=slots.get("order_id"),
             intent=intake.intent,
             confidence=intake.confidence,
             slots=slots,

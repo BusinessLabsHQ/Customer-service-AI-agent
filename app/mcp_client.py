@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 import anyio
 from mcp import ClientSession
@@ -60,13 +63,39 @@ class McpToolClient:
             for t in result.tools
         ]
 
+    def post_tool_use(
+        self,
+        server: str,
+        tool_name: str,
+        arguments: dict[str, Any],
+        result: dict[str, Any],
+    ) -> dict[str, Any]:
+        """PostToolUse hook — runs after every MCP tool result (assessment Step 4)."""
+
+        safe_args = {key: value for key, value in arguments.items() if key != "backend_state"}
+        logger.info(
+            "post_tool_use  server=%s  tool=%s  args=%s  result_keys=%s",
+            server,
+            tool_name,
+            safe_args,
+            sorted(result.keys()),
+        )
+        return result
+
     def call(self, server: str, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         """Call one MCP tool and return its structured JSON result."""
 
-        return anyio.run(self._call_async, self._settings.url_for(server), tool_name, arguments)
+        return anyio.run(
+            self._call_async,
+            server,
+            self._settings.url_for(server),
+            tool_name,
+            arguments,
+        )
 
     async def _call_async(
         self,
+        server: str,
         url: str,
         tool_name: str,
         arguments: dict[str, Any],
@@ -81,15 +110,18 @@ class McpToolClient:
             raise RuntimeError(f"MCP tool {tool_name} failed: {text}")
 
         if result.structuredContent is not None:
-            return dict(result.structuredContent)
+            payload = dict(result.structuredContent)
+        else:
+            text = self._result_text(result)
+            if not text:
+                payload = {}
+            else:
+                parsed = json.loads(text)
+                if not isinstance(parsed, dict):
+                    raise TypeError(f"MCP tool {tool_name} returned non-object JSON.")
+                payload = parsed
 
-        text = self._result_text(result)
-        if not text:
-            return {}
-        payload = json.loads(text)
-        if not isinstance(payload, dict):
-            raise TypeError(f"MCP tool {tool_name} returned non-object JSON.")
-        return payload
+        return self.post_tool_use(server, tool_name, arguments, payload)
 
     def _result_text(self, result: Any) -> str:
         return "\n".join(
