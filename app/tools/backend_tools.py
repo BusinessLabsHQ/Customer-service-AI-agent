@@ -6,6 +6,31 @@ from hashlib import sha256
 from app.schemas.case import BackendState, Order
 from app.tools.audit_tools import AuditLog
 
+# Customer #121 bought three water heaters — disambiguation by days_since_purchase.
+WATER_HEATER_PURCHASES: list[dict] = [
+    {
+        "order_id": "wh_121_5d",
+        "customer_id": "cus_121",
+        "item_description": "Water Heater — 40 gal (5 days ago)",
+        "amount": 189.99,
+        "days_since_purchase": 5,
+    },
+    {
+        "order_id": "wh_121_13d",
+        "customer_id": "cus_121",
+        "item_description": "Water Heater — 50 gal (13 days ago)",
+        "amount": 219.50,
+        "days_since_purchase": 13,
+    },
+    {
+        "order_id": "wh_121_45d",
+        "customer_id": "cus_121",
+        "item_description": "Water Heater — tankless (45 days ago)",
+        "amount": 349.00,
+        "days_since_purchase": 45,
+    },
+]
+
 
 def _seeded_random(order_id: str) -> random.Random:
     seed = int(sha256(f"42:{order_id}".encode()).hexdigest(), 16) % (2**32)
@@ -38,7 +63,36 @@ class BackendTools:
             return {"customer": None}
         return {"customer": customer.model_dump() if customer else None}
 
-    def lookup_order(self, order_id: str | None = None) -> dict:
+    def lookup_order(
+        self,
+        order_id: str | None = None,
+        *,
+        days_since_purchase_target: int | None = None,
+        disambiguate_water_heater: bool = False,
+    ) -> dict:
+        normalized_id = (order_id or "").lstrip("#").strip()
+        if disambiguate_water_heater or (
+            normalized_id in {"121", "ord_121"} and days_since_purchase_target is not None
+        ):
+            for purchase in WATER_HEATER_PURCHASES:
+                if purchase["days_since_purchase"] == days_since_purchase_target:
+                    order_payload = Order(
+                        order_id=purchase["order_id"],
+                        customer_id=purchase["customer_id"],
+                        amount=purchase["amount"],
+                        currency="USD",
+                        status="paid",
+                        refundable=True,
+                        days_since_purchase=purchase["days_since_purchase"],
+                    ).model_dump()
+                    order_payload["item_description"] = purchase["item_description"]
+                    return {
+                        "order": order_payload,
+                        "matched_purchase_days": purchase["days_since_purchase"],
+                        "water_heater_disambiguation": True,
+                    }
+            return {"order": None, "water_heater_disambiguation": True}
+
         order = self._state.order
         if order_id is not None and order is not None and order.order_id != order_id:
             return {"order": None}

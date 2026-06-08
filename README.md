@@ -1,3 +1,6 @@
+Project made for assessment for BusinessLabs.org
+My id is 2026-2400
+
 # Customer-service-AI-agent — Refund Triage
 
 A proof-of-concept customer support triage service demonstrating how LLMs can be integrated into a deterministic workflow. It processes refund requests using a state machine backed by the Claude API — Claude classifies intent via MCP tool_use, evaluates eligibility against policy, and generates a policy-grounded explanation. Not intended for production use.
@@ -73,6 +76,7 @@ Order data is seeded deterministically per order ID. Useful test orders:
 | Order | Scenario | Details |
 |-------|----------|---------|
 | `#121` | Auto-refund | $77.87, paid, refundable, 13 days |
+| `#121` + water heaters | Disambiguate by purchase date | Customer bought 3 water heaters (5d, **13d**, 45d ago) — agent picks the 13-day order |
 | `#12` | Escalate — over $100 | $107.79, paid, refundable, 14 days |
 | `#9` | Deny — order not found | Returns null from backend |
 | `#1` | Deny — outside 30-day window | 45 days since purchase |

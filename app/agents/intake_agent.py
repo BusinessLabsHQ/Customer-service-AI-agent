@@ -96,6 +96,9 @@ class IntakeAgent:
     def _fallback_parse(self, user_message: str) -> IntakeResult:
         text = user_message.lower()
         slots: dict[str, str] = {}
+        hash_order = re.search(r"#\s*(\d+)\b", user_message)
+        if hash_order:
+            slots["order_id"] = hash_order.group(1)
         for prefix, key in (("cus", "customer_id"), ("ord", "order_id")):
             match = re.search(rf"\b{prefix}_[a-z0-9]+\b", text)
             if match:

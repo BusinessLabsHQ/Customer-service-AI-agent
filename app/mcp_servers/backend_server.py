@@ -26,11 +26,17 @@ def get_customer(
 def lookup_order(
     backend_state: dict[str, Any] | None = None,
     order_id: str | None = None,
+    days_since_purchase_target: int | None = None,
+    disambiguate_water_heater: bool = False,
 ) -> dict[str, Any]:
     """Look up an order in the supplied backend state."""
 
     audit_log = AuditLog()
-    return BackendTools(parse_backend_state(backend_state), audit_log).lookup_order(order_id)
+    return BackendTools(parse_backend_state(backend_state), audit_log).lookup_order(
+        order_id,
+        days_since_purchase_target=days_since_purchase_target,
+        disambiguate_water_heater=disambiguate_water_heater,
+    )
 
 
 @mcp.tool()
