@@ -68,6 +68,7 @@ class SupportCoordinator:
 
         final_action = FinalAction.ASK_CLARIFYING_QUESTION
         escalate = False
+        identity_refusal: str | None = None
 
         def call_tool(tool_name: str, arguments: dict, result: dict) -> None:
             tool_records.append(
@@ -249,7 +250,12 @@ class SupportCoordinator:
         elif intake.intent == Intent.REFUND_REQUEST:
             order_id = slots.get("order_id")
             customer_id = slots.get("customer_id")
+            # identity_gate (Step 3): refund tools blocked until order_id or customer_id — see check below
             if not order_id and not customer_id:
+                identity_refusal = (
+                    "I cannot process a refund without your order number or customer ID. "
+                    "Please provide one and I will help right away."
+                )
                 logger.info(
                     "REFUND:identity_gate  refused — missing order_id and customer_id; no tool calls"
                 )
@@ -397,13 +403,17 @@ class SupportCoordinator:
             tool_call_records=tool_records,
             final_action=final_action,
             escalate=escalate,
-            user_response=build_user_response(
-                final_action,
-                intake.intent,
-                explanation,
-                policy_grounding.explanation,
-                self._settings,
-                similar_result.get("similar_cases", []),
+            user_response=(
+                identity_refusal
+                if identity_refusal
+                else build_user_response(
+                    final_action,
+                    intake.intent,
+                    explanation,
+                    policy_grounding.explanation,
+                    self._settings,
+                    similar_result.get("similar_cases", []),
+                )
             ),
             audit_note="",
             policy_explanation=policy_grounding.explanation,

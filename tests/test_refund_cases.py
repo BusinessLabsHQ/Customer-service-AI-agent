@@ -12,6 +12,22 @@ def run_refund(order: Order | None) -> object:
     )
 
 
+def test_refund_without_identity_refuses_no_tools() -> None:
+    output = SupportCoordinator(Settings(APP_ENV="test")).run(
+        RunCaseRequest(
+            user_message="I want a refund please",
+            mock_backend_state=BackendState(order=None),
+        )
+    )
+
+    assert output.final_action == FinalAction.ASK_CLARIFYING_QUESTION
+    assert output.escalate is False
+    assert "order number or customer ID" in output.user_response
+    assert "lookup_order" not in output.tool_calls
+    assert "process_refund" not in output.tool_calls
+    assert "request_refund_approval" not in output.tool_calls
+
+
 def test_refund_order_not_found_denies() -> None:
     output = run_refund(order=None)
 

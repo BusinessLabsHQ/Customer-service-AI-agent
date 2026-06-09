@@ -89,7 +89,9 @@ class McpToolClient:
         last_error: RuntimeError | None = None
         for attempt in range(2):
             try:
-                return anyio.run(self._call_async, server, url, tool_name, arguments)
+                raw_result = anyio.run(self._call_async, server, url, tool_name, arguments)
+                # PostToolUse hook (Step 4): log/process each result after MCP returns.
+                return self.post_tool_use(server, tool_name, arguments, raw_result)
             except RuntimeError as exc:
                 last_error = exc
                 if attempt == 0 and ("503" in str(exc) or "service unavailable" in str(exc).lower()):
@@ -133,7 +135,7 @@ class McpToolClient:
                     raise TypeError(f"MCP tool {tool_name} returned non-object JSON.")
                 payload = parsed
 
-        return self.post_tool_use(server, tool_name, arguments, payload)
+        return payload
 
     def _result_text(self, result: Any) -> str:
         return "\n".join(
